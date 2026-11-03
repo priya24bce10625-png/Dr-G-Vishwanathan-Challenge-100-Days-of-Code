@@ -1,0 +1,77 @@
+import java.util.*;
+
+class Solution {
+    public int shortestPath(int n, int[][] edges, String labels, int k) {
+        List<int[]>[] graph = new ArrayList[n];
+
+        for (int i = 0; i < n; i++) {
+            graph[i] = new ArrayList<>();
+        }
+
+        for (int[] e : edges) {
+            graph[e[0]].add(new int[]{e[1], e[2]});
+        }
+
+        // State: node, last character, consecutive count
+        // Distance map stores only discovered states.
+        Map<Long, Integer> dist = new HashMap<>();
+
+        PriorityQueue<long[]> pq = new PriorityQueue<>(
+            Comparator.comparingLong(a -> a[0])
+        );
+
+        int startChar = labels.charAt(0) - 'a';
+        long startKey = encode(0, startChar, 1, k);
+
+        dist.put(startKey, 0);
+        pq.offer(new long[]{0, 0, startChar, 1});
+
+        while (!pq.isEmpty()) {
+            long[] cur = pq.poll();
+
+            long cost = cur[0];
+            int u = (int) cur[1];
+            int last = (int) cur[2];
+            int count = (int) cur[3];
+
+            long key = encode(u, last, count, k);
+
+            if (dist.getOrDefault(key, Integer.MAX_VALUE) != cost) {
+                continue;
+            }
+
+            if (u == n - 1) {
+                return (int) cost;
+            }
+
+            for (int[] edge : graph[u]) {
+                int v = edge[0];
+                int weight = edge[1];
+                int ch = labels.charAt(v) - 'a';
+
+                int newCount = (ch == last) ? count + 1 : 1;
+
+                if (newCount > k) {
+                    continue;
+                }
+
+                long newCost = cost + weight;
+                long newKey = encode(v, ch, newCount, k);
+
+                if (newCost < dist.getOrDefault(
+                        newKey, Integer.MAX_VALUE)) {
+                    dist.put(newKey, (int) newCost);
+                    pq.offer(new long[]{
+                        newCost, v, ch, newCount
+                    });
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    private long encode(int node, int ch, int count, int k) {
+        return ((long) node * 26 + ch) * (k + 1) + count;
+    }
+}
