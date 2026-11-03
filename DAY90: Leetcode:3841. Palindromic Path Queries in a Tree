@@ -1,0 +1,131 @@
+class Solution {
+    private int n, LOG, timer;
+    private List<Integer>[] adj;
+    private int[] tin, tout, depth, values, bit;
+    private int[][] up;
+
+    public List<Boolean> palindromePath(int n, int[][] edges,
+                                        String s, String[] queries) {
+        this.n = n;
+        LOG = 1;
+        while ((1 << LOG) <= n) LOG++;
+
+        adj = new ArrayList[n];
+        for (int i = 0; i < n; i++) adj[i] = new ArrayList<>();
+
+        for (int[] e : edges) {
+            adj[e[0]].add(e[1]);
+            adj[e[1]].add(e[0]);
+        }
+
+        tin = new int[n];
+        tout = new int[n];
+        depth = new int[n];
+        values = new int[n];
+        bit = new int[n + 2];
+        up = new int[n][LOG];
+
+        for (int i = 0; i < n; i++) {
+            values[i] = 1 << (s.charAt(i) - 'a');
+        }
+
+        timer = 0;
+        dfs(0, 0, 0);
+
+        for (int i = 0; i < n; i++) {
+            rangeXor(tin[i], tout[i], values[i]);
+        }
+
+        List<Boolean> ans = new ArrayList<>();
+
+        for (String q : queries) {
+            String[] p = q.split(" ");
+
+            if (p[0].equals("update")) {
+                int u = Integer.parseInt(p[1]);
+                char c = p[2].charAt(0);
+
+                int newValue = 1 << (c - 'a');
+                int delta = values[u] ^ newValue;
+
+                rangeXor(tin[u], tout[u], delta);
+                values[u] = newValue;
+            } else {
+                int u = Integer.parseInt(p[1]);
+                int v = Integer.parseInt(p[2]);
+
+                int lca = getLCA(u, v);
+
+                int mask = pointQuery(tin[u])
+                         ^ pointQuery(tin[v])
+                         ^ values[lca];
+
+                ans.add((mask & (mask - 1)) == 0);
+            }
+        }
+
+        return ans;
+    }
+
+    private void dfs(int u, int p, int d) {
+        tin[u] = ++timer;
+        depth[u] = d;
+        up[u][0] = p;
+
+        for (int j = 1; j < LOG; j++) {
+            up[u][j] = up[up[u][j - 1]][j - 1];
+        }
+
+        for (int v : adj[u]) {
+            if (v != p) dfs(v, u, d + 1);
+        }
+
+        tout[u] = timer;
+    }
+
+    private int getLCA(int u, int v) {
+        if (depth[u] < depth[v]) {
+            int temp = u;
+            u = v;
+            v = temp;
+        }
+
+        int diff = depth[u] - depth[v];
+
+        for (int j = 0; j < LOG; j++) {
+            if ((diff & (1 << j)) != 0) u = up[u][j];
+        }
+
+        if (u == v) return u;
+
+        for (int j = LOG - 1; j >= 0; j--) {
+            if (up[u][j] != up[v][j]) {
+                u = up[u][j];
+                v = up[v][j];
+            }
+        }
+
+        return up[u][0];
+    }
+
+    private void rangeXor(int l, int r, int delta) {
+        updateBIT(l, delta);
+        updateBIT(r + 1, delta);
+    }
+
+    private void updateBIT(int idx, int delta) {
+        for (int i = idx; i <= n + 1; i += i & -i) {
+            bit[i] ^= delta;
+        }
+    }
+
+    private int pointQuery(int idx) {
+        int mask = 0;
+
+        for (int i = idx; i > 0; i -= i & -i) {
+            mask ^= bit[i];
+        }
+
+        return mask;
+    }
+}
